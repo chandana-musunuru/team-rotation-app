@@ -1,0 +1,187 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Team Rotation</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+  <style>
+    body{font-family:system-ui,Arial;max-width:900px;margin:24px auto;padding:0 16px}
+    h1{margin:0 0 8px}
+    .muted{color:#666;font-size:14px;margin-bottom:12px}
+    table{width:100%;border-collapse:collapse;margin-top:12px}
+    th,td{border-bottom:1px solid #eee;padding:8px;text-align:left;vertical-align:middle}
+    tr:hover{background:#fafafa}
+    .btn{padding:8px 12px;border-radius:8px;border:1px solid #ddd;background:#fff;cursor:pointer}
+    .btn.danger{border-color:#d33;color:#d33}
+    .btn.small{padding:6px 10px}
+    .pill{font-size:12px;padding:2px 8px;border-radius:999px;border:1px solid #ddd}
+    .green{color:#16a34a;font-weight:600}
+    .toolbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+    #resetBtn{display:none}
+  </style>
+</head>
+<body>
+  <h1>Team Rotation</h1>
+  <div class="muted">Everyone can view. Editors enter a PIN when changing anything.</div>
+
+  <div class="toolbar">
+    <form id="addForm" autocomplete="off">
+      <input id="firstName" type="text" placeholder="First name" required />
+      <input id="lastName" type="text" placeholder="Last name" required />
+      <button class="btn" type="submit">Add member</button>
+    </form>
+    <button id="resetBtn" class="btn danger" title="Clear only status + date after all are completed">Reset</button>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th style="width:40px">#</th>
+        <th style="width:240px">Name</th>
+        <th style="width:160px">Status</th>
+        <th style="width:180px">Date</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody id="rows"></tbody>
+  </table>
+
+  <script>
+    // ---- set yours ----
+    const SUPABASE_URL = 'https://cmsefsvmmcsmsjhgznca.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNtc2Vmc3ZtbWNzbXNqaGd6bmNhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjIwMDI0OTMsImV4cCI6MjA3NzU3ODQ5M30.zxLqlcUwd1cRpYpQAU6SvxflPieWJvnxSdgOHj_PdL4';
+    // -------------------
+
+    const client = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    let PIN = null;        // kept only in memory for this tab
+    let rowsData = [];
+
+    function ensurePin() {
+      if (PIN) return true;
+      const p = prompt('Editor PIN (leave blank to stay read-only):');
+      if (p && p.trim()) { PIN = p.trim(); return true; }
+      return false;
+    }
+
+    // READ
+    async function loadRows() {
+      const { data, error } = await client
+        .from('team_members')
+        .select('*')
+        .order('first_name', { ascending: true })
+        .order('last_name', { ascending: true });
+      if (error) { alert(error.message); return; }
+      rowsData = data || [];
+      renderRows(rowsData);
+      const allDone = rowsData.length > 0 && rowsData.every(r => !!r.status);
+      document.getElementById('resetBtn').style.display = allDone ? 'inline-block' : 'none';
+    }
+
+    // RENDER
+    function renderRows(items) {
+      const tbody = document.getElementById('rows');
+      tbody.innerHTML = '';
+      items.forEach((r, idx) => {
+        const tr = document.createElement('tr');
+
+        const c1 = document.createElement('td'); c1.textContent = idx + 1;
+
+        const c2 = document.createElement('td'); c2.textContent = `${r.first_name} ${r.last_name}`;
+
+        const c3 = document.createElement('td');
+        c3.innerHTML = r.status ? '<span class="green">✅ Completed</span>' : '<span class="pill">Not completed</span>';
+
+        const c4 = document.createElement('td');
+        c4.textContent = r.event_date ? new Date(r.event_date).toLocaleDateString() : '';
+
+        const c5 = document.createElement('td');
+
+        // status toggle
+        const toggle = document.createElement('input');
+        toggle.type = 'checkbox'; toggle.checked = !!r.status;
+        toggle.title = 'Mark completed';
+        toggle.addEventListener('change', async () => {
+          if (!ensurePin()) { toggle.checked = !!r.status; return; }
+          const patch = { status: toggle.checked };
+          if (toggle.checked && !r.event_date) patch.event_date = new Date().toISOString().slice(0,10);
+          const { error } = await client.rpc('update_member_with_pin', {
+            p_pin: PIN,
+            p_id: r.id,
+            p_status: patch.status ?? null,
+            p_event_date: patch.event_date ?? null,
+            p_first: null, p_last: null
+          });
+          if (error) alert(error.message);
+          await loadRows();
+        });
+
+        // date picker
+        const date = document.createElement('input');
+        date.type = 'date'; date.value = r.event_date || '';
+        date.addEventListener('change', async () => {
+          if (!ensurePin()) { date.value = r.event_date || ''; return; }
+          const val = date.value || null;
+          const { error } = await client.rpc('update_member_with_pin', {
+            p_pin: PIN, p_id: r.id,
+            p_status: null, p_event_date: val,
+            p_first: null, p_last: null
+          });
+          if (error) alert(error.message);
+          await loadRows();
+        });
+
+        // remove
+        const del = document.createElement('button');
+        del.className = 'btn small';
+        del.textContent = 'Remove';
+        del.addEventListener('click', async () => {
+          if (!ensurePin()) return;
+          if (!confirm(`Remove ${r.first_name} ${r.last_name}?`)) return;
+          const { error } = await client.rpc('remove_member_with_pin', { p_pin: PIN, p_id: r.id });
+          if (error) alert(error.message);
+          await loadRows();
+        });
+
+        c5.append(toggle, document.createTextNode(' '), date, document.createTextNode(' '), del);
+        tr.append(c1, c2, c3, c4, c5);
+        tbody.appendChild(tr);
+      });
+    }
+
+    // ADD
+    document.getElementById('addForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const fn = document.getElementById('firstName').value.trim();
+      const ln = document.getElementById('lastName').value.trim();
+      if (!fn || !ln) return;
+      if (!ensurePin()) return;
+
+      const { error } = await client.rpc('add_person_with_pin', {
+        p_pin: PIN, p_first: fn, p_last: ln
+      });
+      if (error) return alert(error.message);
+      e.target.reset();
+      await loadRows();
+    });
+
+    // RESET (only shows when all are completed)
+    document.getElementById('resetBtn').addEventListener('click', async () => {
+      if (!ensurePin()) return;
+      if (!confirm('Reset? This clears only status + date for everyone.')) return;
+      const { error } = await client.rpc('reset_week_with_pin', { p_pin: PIN });
+      if (error) return alert(error.message);
+      await loadRows();
+    });
+
+    // optional realtime updates
+    client.channel('team_members_changes')
+      .on('postgres_changes', { event:'*', schema:'public', table:'team_members' }, loadRows)
+      .subscribe();
+
+    // boot
+    loadRows();
+  </script>
+</body>
+</html>
