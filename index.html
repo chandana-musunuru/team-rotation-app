@@ -6,56 +6,266 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
   <style>
-    body{font-family:system-ui,Arial;max-width:900px;margin:24px auto;padding:0 16px}
-    h1{margin:0 0 8px}
-    .muted{color:#666;font-size:14px;margin-bottom:12px}
-    table{width:100%;border-collapse:collapse;margin-top:12px}
-    th,td{border-bottom:1px solid #eee;padding:8px;text-align:left;vertical-align:middle}
-    tr:hover{background:#fafafa}
-    .btn{padding:8px 12px;border-radius:8px;border:1px solid #ddd;background:#fff;cursor:pointer}
-    .btn.danger{border-color:#d33;color:#d33}
-    .btn.small{padding:6px 10px}
-    .pill{font-size:12px;padding:2px 8px;border-radius:999px;border:1px solid #ddd}
-    .green{color:#16a34a;font-weight:600}
-    .toolbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
-    #resetBtn{display:none}
+    :root {
+      --bg: #f5f5eeed;
+      --card: #dadde6;
+      --muted: #50cbcb;
+      --text: #080808;
+      --border: #08d92b;
+      --row:rgb(191, 200, 219);
+      --rowAlt: rgb(186, 193, 205);
+      --green: #16a34a;
+      --yellow: #facc15;
+      --red: #ef4444;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: system-ui, Arial, sans-serif;
+      max-width: 1000px;
+      margin: 32px auto;
+      padding: 0 16px;
+    }
+
+    h1 {
+      margin-bottom: 6px;
+      font-weight: 700;
+      font-size: clamp(1.5rem, 2vw, 2rem);
+      text-align: center;
+    }
+
+    .muted {
+      color: var(--muted);
+      font-size: 14px;
+      margin-bottom: 16px;
+      text-align: center;
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 14px;
+      overflow-x: auto;
+    }
+
+    .toolbar {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      flex-wrap: wrap;
+      justify-content: center;
+      margin-bottom: 12px;
+    }
+
+    input[type="text"],
+    input[type="date"] {
+      background: #b7a6e7;
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 10px 12px;
+      min-width: 120px;
+      flex: 1;
+    }
+
+    label.small {
+      font-size: 12px;
+      color: var(--muted);
+      margin: 0 6px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      border-radius: 12px;
+      overflow: hidden;
+      font-size: clamp(0.85rem, 1.2vw, 1rem);
+    }
+
+    thead th {
+      background: #152044;
+      color: #dce3ea;
+      font-weight: 600;
+      border-bottom: 1px solid var(--border);
+      padding: 12px 10px;
+      text-align: left;
+      white-space: nowrap;
+    }
+
+    tbody td {
+      padding: 12px 10px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    tbody tr:nth-child(odd) {
+      background: var(--row);
+    }
+
+    tbody tr:nth-child(even) {
+      background: var(--rowAlt);
+    }
+
+    .row {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .pill {
+      font-size: 12px;
+      padding: 2px 8px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      color: #cbd5e1;
+    }
+
+    .green {
+      color: var(--green);
+      font-weight: 600;
+    }
+
+    .btn {
+      padding: 10px 14px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: #0d1733;
+      color: var(--text);
+      cursor: pointer;
+      transition: 0.15s transform ease;
+      font-size: clamp(0.9rem, 1vw, 1rem);
+    }
+
+    .btn:hover {
+      transform: translateY(-1px);
+    }
+
+    .btn.block {
+      width: 100%;
+      justify-content: center;
+    }
+
+    .btn-green {
+      background: var(--green);
+      border-color: var(--green);
+      color: #07130a;
+    }
+
+    .btn-yellow {
+      background: var(--yellow);
+      border-color: var(--yellow);
+      color: #1f2937;
+    }
+
+    .btn-red {
+      background: var(--red);
+      border-color: var(--red);
+      color: #fff;
+    }
+
+    .grid {
+      display: grid;
+      gap: 12px;
+    }
+
+    .grid-2 {
+      grid-template-columns: 1fr 1fr;
+    }
+
+    .footer-actions {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 12px;
+      margin-top: 14px;
+    }
+
+    @media (max-width: 720px) {
+      body {
+        padding: 0 10px;
+      }
+
+      .toolbar {
+        flex-direction: column;
+        align-items: stretch;
+      }
+
+      input[type="text"],
+      input[type="date"] {
+        width: 100%;
+      }
+
+      table {
+        display: block;
+        overflow-x: auto;
+      }
+
+      thead th,
+      tbody td {
+        padding: 10px;
+      }
+
+      .footer-actions {
+        grid-template-columns: 1fr;
+      }
+
+      .btn {
+        width: 100%;
+      }
+    }
   </style>
 </head>
 <body>
   <h1>Team Rotation</h1>
-  <div class="muted">Everyone can view. Editors enter a PIN when changing anything.</div>
+  <div class="muted" style="color:#000;">Everyone can view. Edits require a PIN.</div>
 
-  <div class="toolbar">
-    <form id="addForm" autocomplete="off">
+  <!-- Add form card -->
+  <div class="card">
+    <form id="addForm" class="toolbar" autocomplete="off">
       <input id="firstName" type="text" placeholder="First name" required />
       <input id="lastName" type="text" placeholder="Last name" required />
-      <button class="btn" type="submit">Add member</button>
+      <label for="eventDate" class="small" style="color:#000;">Date</label>
+      <input id="eventDate" type="date" style="width:170px" />
+      <button class="btn btn-green" type="submit">Add member</button>
     </form>
-    <button id="resetBtn" class="btn danger" title="Clear only status + date after all are completed">Reset</button>
   </div>
 
-  <table>
-    <thead>
-      <tr>
-        <th style="width:40px">#</th>
-        <th style="width:240px">Name</th>
-        <th style="width:160px">Status</th>
-        <th style="width:180px">Date</th>
-        <th>Actions</th>
-      </tr>
-    </thead>
-    <tbody id="rows"></tbody>
-  </table>
+  <!-- Table card -->
+  <div class="card" style="margin-top:14px">
+    <table>
+      <thead>
+        <tr>
+          <th style="width:40%">first_name</th>
+          <th style="width:40%">last_name</th>
+          <th style="width:20%">status / date</th>
+        </tr>
+      </thead>
+      <tbody id="rows"></tbody>
+    </table>
+
+    <!-- Footer actions under ALL rows -->
+    <div class="footer-actions">
+      <button id="removeByFirstBtn" class="btn btn-red">Delete (by First Name)</button>
+      <button id="resetBtn" class="btn btn-yellow" style="display:none">Reset All (when all completed)</button>
+    </div>
+  </div>
 
   <script>
-    // ---- set yours ----
+    // ▶▶ Set your real values
     const SUPABASE_URL = 'https://cmsefsvmmcsmsjhgznca.supabase.co';
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNtc2Vmc3ZtbWNzbXNqaGd6bmNhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjIwMDI0OTMsImV4cCI6MjA3NzU3ODQ5M30.zxLqlcUwd1cRpYpQAU6SvxflPieWJvnxSdgOHj_PdL4';
-    // -------------------
+
+    // ◀◀
 
     const client = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
-    let PIN = null;        // kept only in memory for this tab
+    let PIN = null;
     let rowsData = [];
 
     function ensurePin() {
@@ -65,50 +275,53 @@
       return false;
     }
 
-    // READ
+    function localTodayYMD() {
+      const d = new Date();
+      d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+      return d.toISOString().slice(0, 10);
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+      const dateEl = document.getElementById('eventDate');
+      if (dateEl && !dateEl.value) dateEl.value = localTodayYMD();
+    });
+
     async function loadRows() {
       const { data, error } = await client
         .from('team_members')
         .select('*')
         .order('first_name', { ascending: true })
         .order('last_name', { ascending: true });
+
       if (error) { alert(error.message); return; }
       rowsData = data || [];
       renderRows(rowsData);
+
       const allDone = rowsData.length > 0 && rowsData.every(r => !!r.status);
-      document.getElementById('resetBtn').style.display = allDone ? 'inline-block' : 'none';
+      document.getElementById('resetBtn').style.display = allDone ? 'block' : 'none';
     }
 
-    // RENDER
     function renderRows(items) {
       const tbody = document.getElementById('rows');
       tbody.innerHTML = '';
-      items.forEach((r, idx) => {
+      items.forEach((r) => {
         const tr = document.createElement('tr');
 
-        const c1 = document.createElement('td'); c1.textContent = idx + 1;
+        const tdFirst = document.createElement('td'); tdFirst.textContent = r.first_name || '';
+        const tdLast  = document.createElement('td'); tdLast.textContent  = r.last_name  || '';
 
-        const c2 = document.createElement('td'); c2.textContent = `${r.first_name} ${r.last_name}`;
+        const tdStatusDate = document.createElement('td');
+        const wrap = document.createElement('div'); wrap.className = 'grid';
 
-        const c3 = document.createElement('td');
-        c3.innerHTML = r.status ? '<span class="green">✅ Completed</span>' : '<span class="pill">Not completed</span>';
-
-        const c4 = document.createElement('td');
-        c4.textContent = r.event_date ? new Date(r.event_date).toLocaleDateString() : '';
-
-        const c5 = document.createElement('td');
-
-        // status toggle
-        const toggle = document.createElement('input');
-        toggle.type = 'checkbox'; toggle.checked = !!r.status;
-        toggle.title = 'Mark completed';
+        const statusRow = document.createElement('div'); statusRow.className = 'row';
+        const toggle = document.createElement('input'); toggle.type='checkbox'; toggle.checked=!!r.status;
+        const label  = document.createElement('span'); label.innerHTML = r.status ? '<span class="green">Completed</span>' : '<span class="pill">Not completed</span>';
         toggle.addEventListener('change', async () => {
           if (!ensurePin()) { toggle.checked = !!r.status; return; }
           const patch = { status: toggle.checked };
-          if (toggle.checked && !r.event_date) patch.event_date = new Date().toISOString().slice(0,10);
+          if (toggle.checked && !r.event_date) patch.event_date = localTodayYMD();
           const { error } = await client.rpc('update_member_with_pin', {
-            p_pin: PIN,
-            p_id: r.id,
+            p_pin: PIN, p_id: r.id,
             p_status: patch.status ?? null,
             p_event_date: patch.event_date ?? null,
             p_first: null, p_last: null
@@ -116,10 +329,10 @@
           if (error) alert(error.message);
           await loadRows();
         });
+        statusRow.append(toggle, label);
 
-        // date picker
-        const date = document.createElement('input');
-        date.type = 'date'; date.value = r.event_date || '';
+        const dateRow = document.createElement('div'); dateRow.className = 'row';
+        const date = document.createElement('input'); date.type='date'; date.value = r.event_date || '';
         date.addEventListener('change', async () => {
           if (!ensurePin()) { date.value = r.event_date || ''; return; }
           const val = date.value || null;
@@ -131,56 +344,75 @@
           if (error) alert(error.message);
           await loadRows();
         });
+        dateRow.append(date);
 
-        // remove
-        const del = document.createElement('button');
-        del.className = 'btn small';
-        del.textContent = 'Remove';
-        del.addEventListener('click', async () => {
-          if (!ensurePin()) return;
-          if (!confirm(`Remove ${r.first_name} ${r.last_name}?`)) return;
-          const { error } = await client.rpc('remove_member_with_pin', { p_pin: PIN, p_id: r.id });
-          if (error) alert(error.message);
-          await loadRows();
-        });
+        wrap.append(statusRow, dateRow);
+        tdStatusDate.appendChild(wrap);
 
-        c5.append(toggle, document.createTextNode(' '), date, document.createTextNode(' '), del);
-        tr.append(c1, c2, c3, c4, c5);
+        tr.append(tdFirst, tdLast, tdStatusDate);
         tbody.appendChild(tr);
       });
     }
 
-    // ADD
     document.getElementById('addForm').addEventListener('submit', async (e) => {
       e.preventDefault();
       const fn = document.getElementById('firstName').value.trim();
       const ln = document.getElementById('lastName').value.trim();
+      const dt = document.getElementById('eventDate').value.trim();
       if (!fn || !ln) return;
       if (!ensurePin()) return;
 
       const { error } = await client.rpc('add_person_with_pin', {
-        p_pin: PIN, p_first: fn, p_last: ln
+        p_pin: PIN, p_first: fn, p_last: ln, p_event_date: dt || null
       });
-      if (error) return alert(error.message);
+      if (error) { alert(error.message); return; }
+
       e.target.reset();
+      document.getElementById('eventDate').value = localTodayYMD();
       await loadRows();
     });
 
-    // RESET (only shows when all are completed)
+    // DELETE by first name
+    document.getElementById('removeByFirstBtn').addEventListener('click', async () => {
+      if (!ensurePin()) return;
+      const input = prompt('Enter the first name of the member to remove:');
+      if (!input) return;
+      const name = input.trim().toLowerCase();
+
+      const matches = rowsData.filter(r => r.first_name.toLowerCase() === name);
+      if (matches.length === 0) {
+        alert('No member found with that first name.');
+        return;
+      } else if (matches.length > 1) {
+        const names = matches.map(r => `${r.first_name} ${r.last_name}`).join('\n');
+        alert(`Multiple matches found:\n${names}\nPlease remove manually or make first names unique.`);
+        return;
+      }
+
+      const match = matches[0];
+      if (!confirm(`Remove ${match.first_name} ${match.last_name}?`)) return;
+
+      const { error } = await client.rpc('remove_member_with_pin', {
+        p_pin: PIN,
+        p_id: match.id
+      });
+      if (error) { alert(error.message); return; }
+
+      await loadRows();
+    });
+
     document.getElementById('resetBtn').addEventListener('click', async () => {
       if (!ensurePin()) return;
-      if (!confirm('Reset? This clears only status + date for everyone.')) return;
+      if (!confirm("Reset? This sets everyone's date to today and clears status for everyone.")) return;
       const { error } = await client.rpc('reset_week_with_pin', { p_pin: PIN });
       if (error) return alert(error.message);
       await loadRows();
     });
 
-    // optional realtime updates
     client.channel('team_members_changes')
-      .on('postgres_changes', { event:'*', schema:'public', table:'team_members' }, loadRows)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'team_members' }, loadRows)
       .subscribe();
 
-    // boot
     loadRows();
   </script>
 </body>
