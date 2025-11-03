@@ -52,7 +52,7 @@
 
   <div class="card">
     <form id="addForm" class="toolbar" autocomplete="off">
-      <input id="fullName" type="text" placeholder="Enter full name" required />
+      <input id="fullName" type="text" placeholder="Enter full name (first_last)" required />
       <label for="eventDate" class="small" style="color:#000;">Date</label>
       <input id="eventDate" type="date" style="width:170px" />
       <button class="btn btn-green" type="submit">Add member</button>
@@ -72,7 +72,7 @@
     </table>
 
     <div class="footer-actions">
-      <button id="removeByFirstBtn" class="btn btn-red">Delete (by First Name)</button>
+      <button id="removeByFirstBtn" class="btn btn-red">Delete (by last Name)</button>
       <button id="resetBtn" class="btn btn-yellow" style="display:none">Reset All (when all completed)</button>
     </div>
   </div>
@@ -211,27 +211,55 @@
       await loadRows();
     });
 
-    document.getElementById('removeByFirstBtn').addEventListener('click', async () => {
-      if (!ensurePin()) return;
-      const input = prompt('Enter the first name of the member to remove:');
-      if (!input) return;
-      const name = input.trim().toLowerCase();
+    document.getElementById('removeByFirstBtn').addEventListener('click', async () => { 
+    if (!ensurePin()) return;
 
-      const matches = rowsData.filter(r => r.first_name.toLowerCase() === name);
-      if (matches.length === 0) { alert('No member found with that first name.'); return; }
-      if (matches.length > 1) {
-        const names = matches.map(r => `${r.first_name} ${r.last_name}`).join('\n');
-        alert(`Multiple matches found:\n${names}\nPlease remove manually or make first names unique.`);
+    // Step 1: Ask for last name
+    const lastNameInput = prompt('Enter the last name of the member to remove:');
+    if (!lastNameInput) return;
+    const lastName = lastNameInput.trim().toLowerCase();
+
+    // Step 2: Filter by last name
+    let matches = rowsData.filter(r => r.last_name.toLowerCase() === lastName);
+
+    if (matches.length === 0) {
+        alert('No member found with that last name.');
         return;
-      }
+    }
 
-      const match = matches[0];
-      if (!confirm(`Remove ${match.first_name} ${match.last_name}?`)) return;
-      const { error } = await client.rpc('remove_member_with_pin', { p_pin: PIN, p_id: match.id });
-      if (error) { alert(error.message); return; }
+    // Step 3: If multiple, ask for full name
+    if (matches.length > 1) {
+        const fullNameInput = prompt(
+            `Multiple members found with last name "${lastNameInput}".\n` +
+            `Please enter the full name (First Last) of the member to remove:\n` +
+            matches.map(r => `${r.first_name} ${r.last_name}`).join('\n')
+        );
+        if (!fullNameInput) return;
 
-      await loadRows();
-    });
+        const fullName = fullNameInput.trim().toLowerCase();
+        matches = matches.filter(r => `${r.first_name.toLowerCase()} ${r.last_name.toLowerCase()}` === fullName);
+
+        if (matches.length === 0) {
+            alert('No member found with that full name.');
+            return;
+        }
+    }
+
+    // Step 4: Confirm deletion
+    const match = matches[0];
+    if (!confirm(`Remove ${match.first_name} ${match.last_name}?`)) return;
+
+    // Step 5: Call backend RPC
+    const { error } = await client.rpc('remove_member_with_pin', { p_pin: PIN, p_id: match.id });
+    if (error) {
+        alert(error.message);
+        return;
+    }
+
+    // Step 6: Reload data
+    await loadRows();
+});
+
 
     document.getElementById('resetBtn').addEventListener('click', async () => {
       if (!ensurePin()) return;
