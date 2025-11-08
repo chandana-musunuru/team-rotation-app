@@ -52,7 +52,7 @@
 
   <div class="card">
     <form id="addForm" class="toolbar" autocomplete="off">
-      <input id="fullName" type="text" placeholder="Enter full name (first_last)" required />
+      <input id="fullName" type="text" placeholder="Enter full name (First Last)" required />
       <label for="eventDate" class="small" style="color:#000;">Date</label>
       <input id="eventDate" type="date" style="width:170px" />
       <button class="btn btn-green" type="submit">Add member</button>
@@ -63,16 +63,15 @@
     <table>
       <thead>
         <tr>
-          <th style="width:40%">first_name</th>
-          <th style="width:40%">last_name</th>
-          <th style="width:20%">status / date</th>
+          <th style="width:60%">name</th>
+          <th style="width:40%">status / date</th>
         </tr>
       </thead>
       <tbody id="rows"></tbody>
     </table>
 
     <div class="footer-actions">
-      <button id="removeByFirstBtn" class="btn btn-red">Delete (by last Name)</button>
+      <button id="removeByNameBtn" class="btn btn-red">Delete (by full name)</button>
       <button id="resetBtn" class="btn btn-yellow" style="display:none">Reset All (when all completed)</button>
     </div>
   </div>
@@ -99,7 +98,7 @@
       return d.toISOString().slice(0, 10);
     }
 
-    // Split full name into first + last
+    // Split full name into first + last for DB fields
     function splitName(fullName) {
       const parts = fullName.trim().split(/\s+/);
       if (parts.length === 1) return [parts[0], parts[0]];
@@ -112,7 +111,7 @@
       const { data, error } = await client.from('team_members').select('*');
       if (error) { alert(error.message); return; }
 
-      // Sort dynamically by last_name, then first_name
+      // Sort by last_name, then first_name
       rowsData = (data || []).sort((a, b) => {
         const lastCmp = (a.last_name || '').localeCompare(b.last_name || '');
         if (lastCmp !== 0) return lastCmp;
@@ -129,8 +128,13 @@
       tbody.innerHTML = '';
       items.forEach((r) => {
         const tr = document.createElement('tr');
-        const tdFirst = document.createElement('td'); tdFirst.textContent = r.first_name || '';
-        const tdLast = document.createElement('td'); tdLast.textContent = r.last_name || '';
+
+        // SINGLE NAME CELL (LAST + FIRST)
+        const tdName = document.createElement('td');
+        const uiName = getUiFullName(r); // "Last First"
+        tdName.textContent = uiName;
+
+        // STATUS / DATE
         const tdStatusDate = document.createElement('td');
         const wrap = document.createElement('div'); wrap.className = 'grid';
 
@@ -161,7 +165,8 @@
 
         wrap.append(statusRow, dateRow);
         tdStatusDate.appendChild(wrap);
-        tr.append(tdFirst, tdLast, tdStatusDate);
+
+        tr.append(tdName, tdStatusDate);
         tbody.appendChild(tr);
       });
     }
@@ -211,55 +216,59 @@
       await loadRows();
     });
 
-    document.getElementById('removeByFirstBtn').addEventListener('click', async () => { 
-    if (!ensurePin()) return;
+    // ---- Helpers for name display/matching ----
+    function normalizeName(s) {
+      return s.trim().replace(/\s+/g, ' ').toLowerCase();
+    }
+    // What we SHOW in UI: "Last First"
+    function getUiFullName(r) {
+      return `${r.last_name || ''} ${r.first_name || ''}`.trim();
+    }
+    // Accept either "First Last" or "Last First" as input
+    function nameMatches(r, input) {
+      const target = normalizeName(input);
+      const firstLast = normalizeName(`${r.first_name || ''} ${r.last_name || ''}`);
+      const lastFirst = normalizeName(`${r.last_name || ''} ${r.first_name || ''}`);
+      return target === firstLast || target === lastFirst;
+    }
 
-    // Step 1: Ask for last name
-    const lastNameInput = prompt('Enter the last name of the member to remove:');
-    if (!lastNameInput) return;
-    const lastName = lastNameInput.trim().toLowerCase();
+    // ---- Delete by FULL NAME (either order) ----
+    document.getElementById('removeByNameBtn').addEventListener('click', async () => {
+      if (!ensurePin()) return;
 
-    // Step 2: Filter by last name
-    let matches = rowsData.filter(r => r.last_name.toLowerCase() === lastName);
+      const input = prompt('Enter the full name to remove (First Last or Last First):');
+      if (!input) return;
 
-    if (matches.length === 0) {
-        alert('No member found with that last name.');
+      let matches = rowsData.filter(r => nameMatches(r, input));
+
+      if (matches.length === 0) {
+        alert('No member found with that full name.');
         return;
-    }
+      }
 
-    // Step 3: If multiple, ask for full name
-    if (matches.length > 1) {
-        const fullNameInput = prompt(
-            `Multiple members found with last name "${lastNameInput}".\n` +
-            `Please enter the full name (First Last) of the member to remove:\n` +
-            matches.map(r => `${r.first_name} ${r.last_name}`).join('\n')
+      // If duplicates, let the user pick
+      let match = matches[0];
+      if (matches.length > 1) {
+        const list = matches
+          .map((r, i) => `${i + 1}. ${getUiFullName(r)} — date: ${r.event_date || 'none'}`)
+          .join('\n');
+        const choice = prompt(
+          `Multiple entries found for "${input}".\nChoose which one to remove:\n${list}\n\nEnter a number:`
         );
-        if (!fullNameInput) return;
+        const idx = parseInt(choice, 10);
+        if (!idx || idx < 1 || idx > matches.length) return;
+        match = matches[idx - 1];
+      }
 
-        const fullName = fullNameInput.trim().toLowerCase();
-        matches = matches.filter(r => `${r.first_name.toLowerCase()} ${r.last_name.toLowerCase()}` === fullName);
+      if (!confirm(`Remove ${getUiFullName(match)}?`)) return;
 
-        if (matches.length === 0) {
-            alert('No member found with that full name.');
-            return;
-        }
-    }
-
-    // Step 4: Confirm deletion
-    const match = matches[0];
-    if (!confirm(`Remove ${match.first_name} ${match.last_name}?`)) return;
-
-    // Step 5: Call backend RPC
-    const { error } = await client.rpc('remove_member_with_pin', { p_pin: PIN, p_id: match.id });
-    if (error) {
+      const { error } = await client.rpc('remove_member_with_pin', { p_pin: PIN, p_id: match.id });
+      if (error) {
         alert(error.message);
         return;
-    }
-
-    // Step 6: Reload data
-    await loadRows();
-});
-
+      }
+      await loadRows();
+    });
 
     document.getElementById('resetBtn').addEventListener('click', async () => {
       if (!ensurePin()) return;
